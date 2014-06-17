@@ -1,118 +1,114 @@
 RESTful
 =======
 
-A RESTful sample with Flask.
+A dns RESTful sample with Flask.
 
--  get todo list:
+-  get dns list:
 
    ::
 
-       > curl -i -H "Content-Type: application/json" http://restful-flask.herokuapp.com/todo/api/tasks/
+       > curl -i -H "Content-Type: application/json" http://127.0.0.1:5000/dns/api/tasks/
 
-       HTTP/1.1 200
-       Content-Length: 432
-       Via: HTTP/1.1 GWA
-       Server: gunicorn/18.0
-       Connection: keep-alive
-       Date: Sun, 06 Apr 2014 06:46:25 GMT
+       HTTP/1.0 200 OK
        Content-Type: application/json
+       Content-Length: 370
+       Server: Werkzeug/0.9.6 Python/2.7
+       Date: Tue, 17 Jun 2014 16:44:59 GMT
 
        {
-         "tasks": [
+          "tasks": [
            {
-             "description": "Amazon, 360buy, Dangdang",
-             "done": false,
-             "id": 1,
-             "title": "Buy Books",
-             "uri": "http://restful-flask.herokuapp.com/todo/api/tasks/1"
-       },
+           "domain_ip": "10.10.1.5", 
+           "domain_name": "gd6-test-001", 
+           "done": false, 
+           "id": 1, 
+           "uri": "http://127.0.0.1:5000/dns/api/tasks/1"
+           }, 
            {
-             "description": "Need to find a good Haskell tutorial on the web",
-             "done": false,
-             "id": 2,
-             "title": "Learn Haskell",
-             "uri": "http://restful-flask.herokuapp.com/todo/api/tasks/2"
+           "domain_ip": "10.10.1.6", 
+           "domain_name": "gd6-test-002", 
+           "done": false, 
+           "id": 2, 
+           "uri": "http://127.0.0.1:5000/dns/api/tasks/2"
            }
-         ]
+           ]
        }
-
--  create a todo item:
-
-   ::
-
-       > curl -i -H "Content-Type: application/json" -X POST -d '{"title": "Learn Python", "description": "go Pythonic"}' http://restful-flask.herokuapp.com/todo/api/tasks/ -u admin:admin
-
-       HTTP/1.1 201 CREATED
-       Content-Type: application/json
-       Date: Sun, 06 Apr 2014 06:49:30 GMT
-       Server: gunicorn/18.0
-       Content-Length: 151
-       Connection: keep-alive
-
-       {"task": {"done": false, "uri": "http://restful-flask.herokuapp.com/todo/api/tasks/3", "description": "go Pythonic",     "title": "Learn Python", "id": 3}}
-
--  lookup a single todo item:
+-  create a dns item:
 
    ::
 
-       > curl -i -H "Content-Type: application/json" http://restful-flask.herokuapp.com/todo/api/tasks/1
-
-       HTTP/1.1 200
-       Content-Length: 189
-       Via: HTTP/1.1 GWA
-       Server: gunicorn/18.0
-       Connection: keep-alive
-       Date: Sun, 06 Apr 2014 06:50:48 GMT
+       > curl -i -H "Content-Type: application/json" -X POST -d '{"domain_name": "gd6-test-007", "domain_ip": "10.10.1.12"}' http://127.0.0.1:5000/dns/api/tasks/ -u admin:admin 
+       HTTP/1.0 201 CREATED
        Content-Type: application/json
+       Content-Length: 197
+       Server: Werkzeug/0.9.6 Python/2.7
+       Date: Tue, 17 Jun 2014 16:47:02 GMT
 
        {
          "task": {
-         "description": "Amazon, 360buy, Dangdang",
-         "done": false,
-         "id": 1,
-         "title": "Buy Books",
-         "uri": "http://restful-flask.herokuapp.com/todo/api/tasks/1"
-         }
+         "domain_ip": "10.10.1.12", 
+         "domain_name": "gd6-test-007", 
+         "done": false, 
+         "id": 3, 
+         "uri": "http://127.0.0.1:5000/dns/api/tasks/3"
+         }    
        }
 
--  update a todo item:
+-  lookup a single dns item:
 
    ::
 
-       > curl -i -H "Content-Type: application/json" -X PUT -d '{"title": "Learn Python", "description": "go Pythonic"}' http://restful-flask.herokuapp.com/todo/api/tasks/1 -u admin:admin
+       > curl -i -H "Content-Type: application/json" http://127.0.0.1:5000/dns/api/tasks/1
 
-       HTTP/1.1 200 OK
+       HTTP/1.0 200 OK
        Content-Type: application/json
-       Date: Sun, 06 Apr 2014 06:51:49 GMT
-       Server: gunicorn/18.0
-       Content-Length: 179
-       Connection: keep-alive
+       Content-Length: 171
+       Server: Werkzeug/0.9.6 Python/2.7
+       Date: Tue, 17 Jun 2014 16:51:38 GMT
 
        {
          "task": {
-         "description": "go Pythonic",
-         "done": false,
-         "id": 1,
-         "title": "Learn Python",
-         "uri": "http://restful-flask.herokuapp.com/todo/api/tasks/1"
+         "domain_ip": "10.10.1.5", 
+         "domain_name": "gd6-test-001", 
+         "done": false, 
+         "id": 1, 
+         "uri": "http://127.0.0.1:5000/dns/api/tasks/1"
          }
        }
-
--  delete a todo item:
+-  update a dns item:
 
    ::
 
-       > curl -i -H "Content-Type: application/json" -X DELETE  http://restful-flask.herokuapp.com/todo/api/tasks/1 -u    admin:admin
+       > curl -i -H "Content-Type: application/json" -X PUT -d '{"domain_name": "gd6-test-001", "domain_ip": "10.10.1.13"}' http://127.0.0.1:5000/dns/api/tasks/3 -u admin:admin
 
-       HTTP/1.1 200 OK
+       HTTP/1.0 200 OK
        Content-Type: application/json
-       Date: Sun, 06 Apr 2014 06:57:36 GMT
-       Server: gunicorn/18.0
+       Content-Length: 172
+       Server: Werkzeug/0.9.6 Python/2.7
+       Date: Tue, 17 Jun 2014 16:55:43 GMT
+
+       {
+         "task": {
+         "domain_ip": "10.10.1.13", 
+         "domain_name": "gd6-test-001", 
+         "done": false, 
+         "id": 3, 
+         "uri": "http://127.0.0.1:5000/dns/api/tasks/3"
+         }
+       }
+-  delete a dns item:
+
+   ::
+
+       > curl -i -H "Content-Type: application/json" -X DELETE  http://127.0.0.1:5000/dns/api/tasks/1 -u  admin:admin
+
+       HTTP/1.0 200 OK
+       Content-Type: application/json
        Content-Length: 22
-       Connection: keep-alive
+       Server: Werkzeug/0.9.6 Python/2.7
+       Date: Tue, 17 Jun 2014 16:57:43 GMT
 
-       {
+       {    
          "result": "True"
        }
-
 
