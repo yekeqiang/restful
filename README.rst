@@ -58,7 +58,7 @@ A dns RESTful sample with Flask.
 
    ::
 
-       > curl -i -H "Content-Type: application/json" http://127.0.0.1:5000/dns/api/tasks/1
+       > curl -i -H "Content-Type: application/json" http://127.0.0.1:5000/dns/api/tasks/gd6-test-001
 
        HTTP/1.0 200 OK
        Content-Type: application/json
@@ -67,13 +67,8 @@ A dns RESTful sample with Flask.
        Date: Tue, 17 Jun 2014 16:51:38 GMT
 
        {
-         "task": {
-         "domain_ip": "10.10.1.5", 
-         "domain_name": "gd6-test-001", 
-         "done": false, 
-         "id": 1, 
-         "uri": "http://127.0.0.1:5000/dns/api/tasks/1"
-         }
+         "domain_name": "gd6-test-003", 
+         "info": "[['IPv4 (1)', '10.10.1.7']]"
        }
 -  update a dns item:
 

@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 
+import re
+import socket
+import sys
 
 import dns.name
 import dns.query
 import dns.update
 import dns.tsigkeyring
-
-
 
 from functools import wraps
 
@@ -27,7 +28,7 @@ KEYRING = dns.tsigkeyring.from_text({
 tasks = [{
             'id': 1,
             'domain_name': u'gd6-test-001',
-            'domain_ip': u'10.10.1.5',
+            'domain_ip': u'10.10.1.13',
             'done': False},
         {
             'id': 2,
@@ -41,6 +42,13 @@ task_fields = {
         'domain_ip': fields.String,
         'done': fields.Boolean,
         'uri': fields.Url('tasks.single', absolute=True)}
+
+#dns_ip_fields = {
+#        'domain_name': fields.String,
+#        'ip_protocol': fields.String,
+#        'domain_ip':   fields.String,
+#        'uri': fields.Url('tasks.single', absolute=True)}
+
 
 check_auth = lambda user, passwd: user == 'admin' and passwd == 'admin'
 
@@ -81,7 +89,7 @@ class TaskListAPI(Resource):
         print "DOMAIN is:  %s" % DOMAIN
         print "DNSHOST is:  %s" % DNSHOST
         print "KEYRING is:  %s" % KEYRING
-        update = dns.update.Update(DOMAIN, keyring=KEYRING)
+        update = dns.update.Update(DOMAIN, keyring = KEYRING)
         update.replace(domain_name, 300, 'A', domain_ip)
         response = dns.query.tcp(update, DNSHOST, timeout=10)
         return {'task': marshal(task, task_fields)}, 201
@@ -96,11 +104,33 @@ class TaskAPI(Resource):
         self.parse.add_argument('domain_ip', type=str, location='json')
         self.parse.add_argument('done', type=bool, location='json')
 
-    def get(self, id):
-        task = [t for t in tasks if t['id'] == id]
-        if not task:
-            abort(404)
-        return jsonify(task=marshal(task[0], task_fields))
+    def get(self, domain_name):
+        #args = self.parse.parse_args()
+        """Create a dictionary mapping address types to their IP's.
+        If an error is encountered, key to error is "Error".
+        """
+        #task = [t for t in tasks if t['domain_name'] == domain_name]
+        #if not task:
+        #    abort(404)
+        #domain_name = str(domain_name)
+        info = []
+        ip_protocol_count = 0
+        #ipv6_count = 0
+        try:
+            for s_family, s_type, s_proto, s_cannoname, s_sockaddr in socket.getaddrinfo(domain_name, None):
+                if s_family == 2 and s_type == 1:
+                    ip_protocol_count += 1
+                    info.append(["IPv4 (%d)" % ip_protocol_count, s_sockaddr[0]])
+                if s_family == 10 and s_type == 1:
+                    ip_protocol_count += 1
+                    info.append(["IPv6 (%d)" % ip_protocol_count, s_sockaddr[0]])
+        except socket.gaierror, err:
+            info.append(["Error", "Unable to resolve %s: %s" % (domain_name, err)])
+
+        print 'the info is: %s' % info
+        #return info
+        return jsonify(info=str(info), domain_name=str(domain_name))
+        #return jsonify(task=marshal(task[0], dns_ip_fields))
 
     @requires_auth
     def put(self, id):
@@ -122,7 +152,7 @@ class TaskAPI(Resource):
         print "the domain is: %s" % domain
         particle = hostname.relativize(domain)
         print "the particle is: %s" % particle
-        update = dns.update.Update(DOMAIN, keyring=KEYRING)
+        update = dns.update.Update(DOMAIN, keyring = KEYRING)
         update.delete(str(domain_name))
         update.add(str(domain_name), 600, 'a', str(domain_ip))
         response = dns.query.tcp(update, DNSHOST)
@@ -133,9 +163,38 @@ class TaskAPI(Resource):
         task = [t for t in tasks if t['id'] == id]
         if not task:
             abort(404)
+        args = self.parse.parse_args()
         tasks.remove(task[0])
+        dns_server = str(DNSHOST)
+        domain_name = args['domain_name']
+        key_name = 'update.zones.key' 
+        dns_update = dns.update.Update(DOMAIN, keyring = KEYRING)
+        dns_update.delete(str(domain_name))
+        response = send_dns_update(dns_update, dns_server, key_name)
         return jsonify(result='True')
 
+def send_dns_update(dns_message, dns_server, key_name):
+    """ Send DNS message to server and return response.
+
+    Args:
+        Update dns_update
+        String dns_server
+        String key_name
+
+    Returns:
+        String response
+    """
+
+    try:
+        response = dns.query.tcp(dns_message, dns_server)
+    except dns.tsig.PeerBadKey:
+        response = ("DNS server %s is not configured for TSIG key: %s." %
+                  (dns_server, key_name))
+    except dns.tsig.PeerBadSignature:
+        response = ("DNS server %s did like the TSIG signature we sent. Check key %s "
+                  "for correctness." % (dns_server, key_name))
+
+    return response
 
 api.add_resource(TaskListAPI, '/', endpoint = 'list')
-api.add_resource(TaskAPI, '/<int:id>', endpoint = 'single')
+api.add_resource(TaskAPI, '/<string:domain_name>', endpoint = 'dns_ip_by_domain_name')
