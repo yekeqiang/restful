@@ -37,7 +37,7 @@ A dns RESTful sample with Flask.
 
    ::
 
-       > curl -i -H "Content-Type: application/json" -X POST -d '{"domain_name": "gd6-test-007", "domain_ip": "10.10.1.12"}' http://127.0.0.1:5000/dns/api/tasks/ -u admin:admin 
+       > curl -i -H "Content-Type: application/json" -X POST -d '{"domain_name": "gd6-test-005", "domain_ip": "10.10.1.9"}' http://127.0.0.1:5000/dns/api/add/zone_record -u admin:admin
        HTTP/1.0 201 CREATED
        Content-Type: application/json
        Content-Length: 197
@@ -58,7 +58,7 @@ A dns RESTful sample with Flask.
 
    ::
 
-       > curl -i -H "Content-Type: application/json" http://127.0.0.1:5000/dns/api/tasks/gd6-test-001
+       > curl -i -H "Content-Type: application/json" http://127.0.0.1:5000/dns/api/gd6-test-001
 
        HTTP/1.0 200 OK
        Content-Type: application/json
@@ -74,7 +74,7 @@ A dns RESTful sample with Flask.
 
    ::
 
-       > curl -i -H "Content-Type: application/json" -X PUT -d '{"domain_name": "gd6-test-001", "domain_ip": "10.10.1.13"}' http://127.0.0.1:5000/dns/api/tasks/3 -u admin:admin
+       > curl -i -H "Content-Type: application/json" -X PUT -d '{"domain_name": "gd6-test-003", "domain_ip": "10.10.1.12"}' http://127.0.0.1:5000/dns/api/update/zone_record -u admin:admin
 
        HTTP/1.0 200 OK
        Content-Type: application/json
@@ -95,7 +95,7 @@ A dns RESTful sample with Flask.
 
    ::
 
-       > curl -i -H "Content-Type: application/json" -X DELETE  http://127.0.0.1:5000/dns/api/tasks/1 -u  admin:admin
+       > curl -i -H "Content-Type: application/json" -X DELETE -d '{"domain_name": "gd6-test-006"}' http://127.0.0.1:5000/dns/api/tasks/del/dns -u  admin:admin 
 
        HTTP/1.0 200 OK
        Content-Type: application/json

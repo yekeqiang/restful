@@ -14,7 +14,7 @@ from functools import wraps
 from flask import abort, Blueprint, jsonify, make_response, request
 from flask.ext.restful import Api, fields, marshal, Resource, reqparse
 
-mod = Blueprint('tasks', __name__, url_prefix='/dns/api/tasks')
+mod = Blueprint('tasks', __name__, url_prefix='/dns/api')
 api = Api(mod)
 
 DOMAIN = 'idc.vip.com'
@@ -26,14 +26,14 @@ KEYRING = dns.tsigkeyring.from_text({
 
 
 tasks = [{
-            'id': 1,
-            'domain_name': u'gd6-test-001',
-            'domain_ip': u'10.10.1.13',
+            'id': 3,
+            'domain_name': u'gd6-test-003',
+            'domain_ip': u'10.10.1.7',
             'done': False},
         {
-            'id': 2,
-            'domain_name': u'gd6-test-002',
-            'domain_ip': u'10.10.1.6',
+            'id': 4,
+            'domain_name': u'gd6-test-004',
+            'domain_ip': u'10.10.1.8',
             'done': False}]
 
 task_fields = {
@@ -76,12 +76,6 @@ class TaskListAPI(Resource):
     @requires_auth
     def post(self):
         args = self.parse.parse_args()
-        task = {
-                'id': tasks and tasks[-1]['id'] + 1 or 1,
-                'domain_name': args['domain_name'],
-                'domain_ip': args['domain_ip'],
-                'done': False}
-        tasks.append(task)
         domain_name = args['domain_name']
         domain_ip = args['domain_ip']
         print "domain_name is:  %s" % domain_name
@@ -92,7 +86,13 @@ class TaskListAPI(Resource):
         update = dns.update.Update(DOMAIN, keyring = KEYRING)
         update.replace(domain_name, 300, 'A', domain_ip)
         response = dns.query.tcp(update, DNSHOST, timeout=10)
-        return {'task': marshal(task, task_fields)}, 201
+        rcode = response.rcode()
+        if rcode == 0:
+            result = 'true'
+            return jsonify(domain_name = str(domain_name), domain_ip = str(domain_ip), domain = DOMAIN, dns_server = DNSHOST, result = result)
+        else:
+            return "add the dns_domain %s failed" % domain_name        
+        #return {'task': marshal(task, task_fields)}, 201
 
 
 class TaskAPI(Resource):
@@ -133,45 +133,51 @@ class TaskAPI(Resource):
         #return jsonify(task=marshal(task[0], dns_ip_fields))
 
     @requires_auth
-    def put(self, id):
-        task = [t for t in tasks if t['id'] == id]
-        if not task:
-            abort(404)
+    def put(self):
         args = self.parse.parse_args()
-        task = task[0]
-        for k in args:
-            if args[k] is not None:
-                task[k] = args[k]
-        hostname = dns.name.from_text(args['domain_name'])
-        print "the hostname is: %s" % hostname
+        #hostname = dns.name.from_text(args['domain_name'])
+        #print "the hostname is: %s" % hostname
         domain_name = args['domain_name']
-        print "the domain_name is: %s" % domain_name
+        #print "the domain_name is: %s" % domain_name
         domain_ip = args['domain_ip']
-        print "the domain_ip is: %s" % domain_ip
+        #print "the domain_ip is: %s" % domain_ip
         domain = dns.name.from_text(DOMAIN)
-        print "the domain is: %s" % domain
-        particle = hostname.relativize(domain)
-        print "the particle is: %s" % particle
+        #print "the domain is: %s" % domain
+        #particle = hostname.relativize(domain)
+        #print "the particle is: %s" % particle
         update = dns.update.Update(DOMAIN, keyring = KEYRING)
         update.delete(str(domain_name))
         update.add(str(domain_name), 600, 'a', str(domain_ip))
         response = dns.query.tcp(update, DNSHOST)
-        return jsonify(task=marshal(task, task_fields))
+        #print response
+        rcode = response.rcode()
+        #print rcode
+        if rcode == 0:
+            result = 'true'
+            return jsonify(domain_name = str(domain_name), domain_ip = str(domain_ip), domain = DOMAIN, dns_server = DNSHOST, result = result)
+        else:
+            return "update the domain_name %s to the domain_ip %s failed" % (domain_name, domain_ip)
+
 
     @requires_auth
-    def delete(self, id):
-        task = [t for t in tasks if t['id'] == id]
-        if not task:
-            abort(404)
+    def delete(self):
+        #task = [t for t in tasks if t['id'] == id]
+        #if not task:
+        #    abort(404)
         args = self.parse.parse_args()
-        tasks.remove(task[0])
+        #tasks.remove(task[0])
         dns_server = str(DNSHOST)
         domain_name = args['domain_name']
         key_name = 'update.zones.key' 
         dns_update = dns.update.Update(DOMAIN, keyring = KEYRING)
         dns_update.delete(str(domain_name))
         response = send_dns_update(dns_update, dns_server, key_name)
-        return jsonify(result='True')
+        rcode = response.rcode()
+        if rcode == 0:
+            result = 'true'
+            return jsonify(domain_name = str(domain_name),result = result)
+        else:
+            return "delete the dns_domain %s failed" % domain_name
 
 def send_dns_update(dns_message, dns_server, key_name):
     """ Send DNS message to server and return response.
@@ -197,4 +203,7 @@ def send_dns_update(dns_message, dns_server, key_name):
     return response
 
 api.add_resource(TaskListAPI, '/', endpoint = 'list')
+api.add_resource(TaskListAPI, '/add/zone_record', endpoint = 'add_dns_domain_by_domain_name')
+api.add_resource(TaskAPI, '/del/zone_record', endpoint = 'del_dns_domain_by_domain_name')
+api.add_resource(TaskAPI, '/update/zone_record', endpoint = 'modify_dns_domain_by_domain_name')
 api.add_resource(TaskAPI, '/<string:domain_name>', endpoint = 'dns_ip_by_domain_name')
