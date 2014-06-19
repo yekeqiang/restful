@@ -9,6 +9,9 @@ import dns.query
 import dns.update
 import dns.reversename
 import dns.tsigkeyring
+import dns.resolver
+
+from dns.exception import DNSException, SyntaxError
 
 from functools import wraps
 
@@ -118,6 +121,86 @@ class TaskAPI(Resource):
             return jsonify(domain_name = str(domain_name),result = result)
         else:
             return "delete the dns_domain %s failed" % domain_name
+
+
+
+
+def isValidTTL(TTL):
+    """ valid the ttl.
+
+    Args:
+        String ttl
+
+    Returns:
+        TTL
+    """
+    try:
+        TTL = dns.ttl.from_text(TTL)
+    except:
+        print 'TTL:', TTL, 'is not valid'
+        exit()
+    return TTL
+
+def isValidPTR(ptr):
+    """valid the ip is or not ptr
+     Args:
+         String: ptr
+    
+     Returns:
+        ptr
+    """
+    if re.match(r'\b(?:\d{1,3}\.){3}\d{1,3}.in-addr.arpa\b', ptr):
+        return True
+    else:
+        print 'Error:', ptr, 'is not a valid PTR record'
+        exit()
+
+def isValidV4Addr(Address):
+    """valid the ip is or not ipv4
+    
+    Agrs:
+        String: Address
+    
+    Returns:
+        boolean
+    """
+    try:
+        dns.ipv4.inet_aton(Address)
+    except socket.error:
+        print 'Error:', Address, 'is not a valid IPv4 address'
+        exit()
+    return True
+
+def isValidV6Addr(Address):
+    """valid the ip is or not ipv4
+    
+    Agrs:
+        String: Address
+    
+    Returns:
+        boolean
+    """
+    try:
+        dns.ipv6.inet_aton(Address)
+    except SyntaxError:
+        print 'Error:', Address, 'is not a valid IPv6 address'
+        exit()
+    return True
+
+
+def isValidName(Name):
+    """the name maybe domain_name
+       valid the name is or not right format
+    Args:
+       String Name
+    
+    Returns:
+       boolean
+    """
+    if re.match(r'^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9]\.?)$', Name):
+        return True
+    else:
+        print 'Error:', Name, 'is not a valid name'
 
 
 def add_zone_record(domain_name, domain_ip):
