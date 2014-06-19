@@ -341,6 +341,80 @@ def send_dns_update(dns_message, dns_server, key_name):
 
     return response
 
+
+def lookup_forward_record(domain_name, record_type):
+    """lookup the detail reocrd by domain_name
+    
+    Args:
+        String domain_name
+    
+
+    Returns:
+        rrset  - the full zone record etc:gd6-test-005.idc.vip.com. 3600 IN A 10.10.1.9
+        qname  - the full domain name etc:gd6-test-005.idc.vip.com.
+        expiration - the expiration time etc: 1403165675.1
+        canonical_name - the canonical domain name etc: gd6-test-005.idc.vip.com.
+        rdclass - int etc:1
+        rdtype - int  etc:1
+        rcode - int etc:0
+    the response:
+    
+    the response is: id 62640
+    opcode QUERY
+    rcode NOERROR
+    flags QR AA RD RA
+    ;QUESTION
+    gd6-test-005.idc.vip.com. IN A
+    ;ANSWER
+    gd6-test-005.idc.vip.com. 3600 IN A 10.10.1.9
+    ;AUTHORITY
+    idc.vip.com. 86400 IN NS gd6-conf-auto-management-002.idc.vipshop.com.
+    idc.vip.com. 86400 IN NS gd6-conf-auto-management-001.idc.vipshop.com.
+    ;ADDITIONAL       
+ 
+    """
+    domain_name = str(domain_name)
+    record_type = str(record_type)
+    try:
+        answers = dns.resolver.query(domain_name, record_type)
+        rrset = answers.rrset
+        qname = answers.qname
+        expiration = answers.expiration
+        canonical_name = answers.canonical_name
+        rdclass = answers.rdclass
+        rdtype = answers.rdtype
+        response = answers.response
+        rcode = response.rcode()
+        return rrset, qname, expiration, canonical_name, rdclass, rdtype, rcode
+    except:
+        print 'domain_name:', domain_name, 'is not valid'
+
+
+def lookup_reserve_record(domain_ip):
+    """lookup the detail reocrd by ip
+    
+    Args:
+        String domain_ip - it's your input domain_ip etc:10.10.1.9
+
+
+    Returns:
+        addr - the full resever  name etc:9.1.10.10.in-addr.arpa.
+        name - the full forward name etc: gd6-test-005.idc.vip.com.
+        rcode - the response's rcode, success is 0
+    """
+    domain_ip = str(domain_ip)
+    rd_type = "PTR"
+    addr = reversename.from_address(domain_ip)
+    try:
+        answers = dns.resolver.query(addr, record_type)
+        name = str(resolver.query(addr, rd_type)[0])
+        response = answers.response
+        rcode = response.rcode()
+        return addr, name, rcode
+    except:
+        print 'addr', addr, 'is not valid'
+
+
 api.add_resource(TaskListAPI, '/', endpoint = 'list')
 api.add_resource(TaskListAPI, '/add/zone_record', endpoint = 'add_dns_domain_by_domain_name')
 api.add_resource(TaskAPI, '/del/zone_record', endpoint = 'del_dns_domain_by_domain_name')
