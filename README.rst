@@ -38,21 +38,21 @@ A dns RESTful sample with Flask.
    ::
 
        > curl -i -H "Content-Type: application/json" -X POST -d '{"domain_name": "gd6-test-005", "domain_ip": "10.10.1.9"}' http://127.0.0.1:5000/dns/api/add/zone_record -u admin:admin
-       HTTP/1.0 201 CREATED
-       Content-Type: application/json
-       Content-Length: 197
-       Server: Werkzeug/0.9.6 Python/2.7
-       Date: Tue, 17 Jun 2014 16:47:02 GMT
 
-       {
-         "task": {
-         "domain_ip": "10.10.1.12", 
-         "domain_name": "gd6-test-007", 
-         "done": false, 
-         "id": 3, 
-         "uri": "http://127.0.0.1:5000/dns/api/tasks/3"
-         }    
+
+       Content-Type: application/json
+       Content-Length: 143
+       Server: Werkzeug/0.9.6 Python/2.7
+       Date: Thu, 19 Jun 2014 03:27:49 GMT
+
+       {   
+         "dns_server": "127.0.0.1", 
+         "domain": "idc.vip.com", 
+         "domain_ip": "10.10.1.9", 
+         "domain_name": "gd6-test-005", 
+         "result": "true"
        }
+
 
 -  lookup a single dns item:
 
@@ -74,36 +74,34 @@ A dns RESTful sample with Flask.
 
    ::
 
-       > curl -i -H "Content-Type: application/json" -X PUT -d '{"domain_name": "gd6-test-003", "domain_ip": "10.10.1.12"}' http://127.0.0.1:5000/dns/api/update/zone_record -u admin:admin
+       > curl -i -H "Content-Type: application/json" -X PUT -d '{"domain_name": "gd6-test-006", "domain_ip": "10.10.1.12"}' http://127.0.0.1:5000/dns/api/update/zone_record -u admin:admin 
 
-       HTTP/1.0 200 OK
        Content-Type: application/json
-       Content-Length: 172
+       Content-Length: 144
        Server: Werkzeug/0.9.6 Python/2.7
-       Date: Tue, 17 Jun 2014 16:55:43 GMT
+       Date: Thu, 19 Jun 2014 03:25:45 GMT
 
        {
-         "task": {
+         "dns_server": "127.0.0.1", 
+         "domain": "idc.vip.com", 
          "domain_ip": "10.10.1.13", 
-         "domain_name": "gd6-test-001", 
-         "done": false, 
-         "id": 3, 
-         "uri": "http://127.0.0.1:5000/dns/api/tasks/3"
-         }
+         "domain_name": "gd6-test-006", 
+         "result": "true"
        }
+
 -  delete a dns item:
 
    ::
 
-       > curl -i -H "Content-Type: application/json" -X DELETE -d '{"domain_name": "gd6-test-006"}' http://127.0.0.1:5000/dns/api/tasks/del/dns -u  admin:admin 
+       > curl -i -H "Content-Type: application/json" -X DELETE -d '{"domain_name": "gd6-test-005"}' http://127.0.0.1:5000/dns/api/del/zone_record -u  admin:admin 
 
        HTTP/1.0 200 OK
        Content-Type: application/json
        Content-Length: 22
        Server: Werkzeug/0.9.6 Python/2.7
-       Date: Tue, 17 Jun 2014 16:57:43 GMT
+       Date: Thu, 19 Jun 2014 03:30:21 GMT
 
-       {    
-         "result": "True"
+       {
+         "domain_name": "gd6-test-005", 
+         "result": "true"
        }
-

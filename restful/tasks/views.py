@@ -89,21 +89,18 @@ class TaskAPI(Resource):
     def get(self, domain_name):
         info = ip_info(domain_name)
         return jsonify(info=str(info), domain_name=str(domain_name))
-        #return jsonify(task=marshal(task[0], dns_ip_fields))
 
     @requires_auth
     def put(self):
         args = self.parse.parse_args()
         domain_name = args['domain_name']
         domain_ip = args['domain_ip']
-        domain = dns.name.from_text(DOMAIN)
-        update = dns.update.Update(DOMAIN, keyring = KEYRING)
-        update.delete(str(domain_name))
-        update.add(str(domain_name), 600, 'a', str(domain_ip))
-        response = dns.query.tcp(update, DNSHOST)
-        #print response
-        rcode = response.rcode()
-        #print rcode
+        #domain = dns.name.from_text(DOMAIN)
+        #update = dns.update.Update(DOMAIN, keyring = KEYRING)
+        #update.delete(str(domain_name))
+        #update.add(str(domain_name), 600, 'a', str(domain_ip))
+        #response = dns.query.tcp(update, DNSHOST)
+        rcode = modify_zone_record(domain_name, domain_ip)
         if rcode == 0:
             result = 'true'
             return jsonify(domain_name = str(domain_name), domain_ip = str(domain_ip), domain = DOMAIN, dns_server = DNSHOST, result = result)
@@ -153,6 +150,7 @@ def create_forward_zone_record(dns_server, zone_name, record_name, record_type, 
 
     Return:
       Dict containing {description, output} from record creation
+    issue #3: before add the forward record, u need validate if the record is exist，if not exist, return fail, if exist ,return              success，and add the record
     """
     update = dns.update.Update(zone_name, keyring = key_name)
     update.replace(record_name, ttl, record_type, record_data)
@@ -181,7 +179,7 @@ def delete_zone_record(domain_name):
     """ del DNS zone record from dns server and return rcode.
 
     Args:
-        domain_name host_name
+        String domain_name
 
     Returns:
         String rcode
@@ -191,6 +189,28 @@ def delete_zone_record(domain_name):
     dns_update = dns.update.Update(DOMAIN, keyring = KEYRING)
     dns_update.delete(str(domain_name))
     response = send_dns_update(dns_update, dns_server, key_name)
+    rcode = response.rcode()
+    return rcode
+
+def modify_zone_record(domain_name, domain_ip):
+    """modify DNS zone record from dns server and return rcode.
+
+    Args:
+        String domain_name
+        String domain_ip
+
+    Returns:
+        String rcode
+    issue #1: when update the forward record, also need update the reserve record
+    issue #2: before update the forward record, u need validate if the record is exist，if not exist, return fail, if exist ,return              success，and update the record
+    """
+    ttl = 3600
+    record_type = "A"
+    domain = dns.name.from_text(DOMAIN)
+    update = dns.update.Update(DOMAIN, keyring = KEYRING)
+    update.delete(str(domain_name))
+    update.add(str(domain_name), ttl, record_type, str(domain_ip))
+    response = dns.query.tcp(update, DNSHOST)
     rcode = response.rcode()
     return rcode
 
