@@ -65,13 +65,16 @@ class TaskListAPI(Resource):
         #create_reserve = args['is_reserve']
         create_reserve = True
         key_name = KEYRING
+        key_file = "/var/named/chroot/etc/Kupdate.zones.key.+157+30577.key"
         zone_name = DOMAIN
         dns_server = DNSHOST
 	#rcode = add_zone_record(domain_name, domain_ip)
-        rcode = create_forward_zone_record(dns_server, zone_name, record_name, record_type, record_data, ttl, key_name)
+        #rcode = create_forward_zone_record(dns_server, zone_name, record_name, record_type, record_data, ttl, key_name)
+        rcode = create_forward_zone_record(dns_server, zone_name, record_name, record_type, record_data, ttl, key_file)
 
         if create_reserve: 
-            record = create_reverse_zone_record(dns_server, record_data, record_name, zone_name, ttl, key_name)
+            #record = create_reverse_zone_record(dns_server, record_data, record_name, zone_name, ttl, key_name)
+            record = create_reverse_zone_record(dns_server, record_data, record_name, zone_name, ttl, key_file)
 
         if rcode == 0:
             result = 'true'
@@ -98,11 +101,6 @@ class TaskAPI(Resource):
         args = self.parse.parse_args()
         domain_name = args['domain_name']
         domain_ip = args['domain_ip']
-        #domain = dns.name.from_text(DOMAIN)
-        #update = dns.update.Update(DOMAIN, keyring = KEYRING)
-        #update.delete(str(domain_name))
-        #update.add(str(domain_name), 600, 'a', str(domain_ip))
-        #response = dns.query.tcp(update, DNSHOST)
         rcode = modify_zone_record(domain_name, domain_ip)
         if rcode == 0:
             result = 'true'
@@ -115,7 +113,8 @@ class TaskAPI(Resource):
     def delete(self):
         args = self.parse.parse_args()
         domain_name = args['domain_name']
-        rcode = delete_zone_record(domain_name)
+        key_file = "/var/named/chroot/etc/Kupdate.zones.key.+157+30577.key"
+        rcode = delete_zone_record(domain_name, key_file)
         if rcode == 0:
             result = 'true'
             return jsonify(domain_name = str(domain_name),result = result)
@@ -203,23 +202,8 @@ def isValidName(Name):
         print 'Error:', Name, 'is not a valid name'
 
 
-def add_zone_record(domain_name, domain_ip):
-    """ add DNS zone record to dns server and return rcode.
-
-    Args:
-        domain_name host_name
-        domain_ip host_ip
-
-    Returns:
-        String rcode
-    """
-    update = dns.update.Update(DOMAIN, keyring = KEYRING)
-    update.replace(domain_name, 300, 'A', domain_ip)
-    response = dns.query.tcp(update, DNSHOST, timeout=10)
-    rcode = response.rcode()
-    return rcode
-
-def create_forward_zone_record(dns_server, zone_name, record_name, record_type, record_data, ttl, key_name):
+#def create_forward_zone_record(dns_server, zone_name, record_name, record_type, record_data, ttl, key_name):
+def create_forward_zone_record(dns_server, zone_name, record_name, record_type, record_data, ttl, key_file):
     """ Parse passed elements and determine which records to create.
 
     Args:
@@ -235,13 +219,16 @@ def create_forward_zone_record(dns_server, zone_name, record_name, record_type, 
       Dict containing {description, output} from record creation
     issue #3: before add the forward record, u need validate if the record is exist，if not exist, return fail, if exist ,return              success，and add the record
     """
-    update = dns.update.Update(zone_name, keyring = key_name)
+    KeyRing = getKey(key_file)
+    #update = dns.update.Update(zone_name, keyring = key_name)
+    update = dns.update.Update(zone_name, keyring = KeyRing)
     update.replace(record_name, ttl, record_type, record_data)
     response = dns.query.tcp(update, dns_server, timeout=10)
     rcode = response.rcode()
     return rcode
 
-def create_reverse_zone_record(dns_server, record_data, record_name, zone_name, ttl, key_name):
+#def create_reverse_zone_record(dns_server, record_data, record_name, zone_name, ttl, key_name):
+def create_reverse_zone_record(dns_server, record_data, record_name, zone_name, ttl, key_file):
     """ If requested, create a reverse PTR record.
     Given the forward record created, resolve its underlying IP. Use that to create the reverse record.
     reverse_ip_fqdn ex: 5.0.20.10.in-addr.arpa.
@@ -255,10 +242,10 @@ def create_reverse_zone_record(dns_server, record_data, record_name, zone_name, 
     reverse_domain = re.search(r"([0-9]+).(.*)$", reverse_ip_fqdn).group(2)
     rcode = create_forward_zone_record(dns_server, reverse_domain, \
                      reverse_ip, "PTR", "%s.%s." % (record_name, zone_name),\
-                     ttl, key_name)
+                     ttl, key_file)
     return rcode
 
-def delete_zone_record(domain_name):
+def delete_zone_record(domain_name, key_file):
     """ del DNS zone record from dns server and return rcode.
 
     Args:
@@ -268,14 +255,16 @@ def delete_zone_record(domain_name):
         String rcode
     """
     dns_server = str(DNSHOST)
+    KeyRing = getKey(key_file)
     key_name = 'update.zones.key'
-    dns_update = dns.update.Update(DOMAIN, keyring = KEYRING)
+    #dns_update = dns.update.Update(DOMAIN, keyring = KEYRING)
+    dns_update = dns.update.Update(DOMAIN, keyring = KeyRing)
     dns_update.delete(str(domain_name))
     response = send_dns_update(dns_update, dns_server, key_name)
     rcode = response.rcode()
     return rcode
 
-def modify_zone_record(domain_name, domain_ip):
+def modify_zone_record(domain_name, domain_ip, key_file):
     """modify DNS zone record from dns server and return rcode.
 
     Args:
@@ -287,10 +276,11 @@ def modify_zone_record(domain_name, domain_ip):
     issue #1: when update the forward record, also need update the reserve record
     issue #2: before update the forward record, u need validate if the record is exist，if not exist, return fail, if exist ,return              success，and update the record
     """
+    KeyRing = getKey(key_file)
     ttl = 3600
     record_type = "A"
     domain = dns.name.from_text(DOMAIN)
-    update = dns.update.Update(DOMAIN, keyring = KEYRING)
+    update = dns.update.Update(DOMAIN, keyring = KeyRing)
     update.delete(str(domain_name))
     update.add(str(domain_name), ttl, record_type, str(domain_ip))
     response = dns.query.tcp(update, DNSHOST)
@@ -413,6 +403,28 @@ def lookup_reserve_record(domain_ip):
         return addr, name, rcode
     except:
         print 'addr', addr, 'is not valid'
+
+
+def getKey(FileName):
+    """get the keyRing to the key file
+
+     ARGS:
+         String: FileName
+
+     Return:
+        KeyRing
+    """
+    f = open(FileName)
+    key = f.readline().strip('\n')
+    f.close()
+    k = {key.rsplit(' ')[0]:key.rsplit(' ')[6]}
+    try:
+        KeyRing = dns.tsigkeyring.from_text(k)
+    except:
+        print k, 'is not a valid key. The file should be in DNS KEY record format. See dnssec-keygen(8)'
+        exit()
+    return KeyRing
+
 
 
 api.add_resource(TaskListAPI, '/', endpoint = 'list')
