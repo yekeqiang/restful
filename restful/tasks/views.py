@@ -24,10 +24,11 @@ import config
 mod = Blueprint('tasks', __name__, url_prefix='/dns/api')
 api = Api(mod)
 
-DOMAIN = 'idc.vip.com'
-DNSHOST = '127.0.0.1'
+
 conf_path="/apps/dat/web/newcode/restful/restful/config/conf.ini"
 
+DOMAIN = config.getDnsZone(conf_path)
+DNSHOST = config.getDnsHost(conf_path)
 
 
 check_auth = lambda user, passwd: user == 'admin' and passwd == 'admin'
@@ -64,8 +65,8 @@ class TaskListAPI(Resource):
         ttl = 3600
         #create_reserve = args['is_reserve']
         create_reserve = True
-        key_name = KEYRING
-        key_file = config.config_parser(conf_path)
+        #key_name = KEYRING
+        key_file = config.getDnsKeyFile(conf_path)
         print key_file
         zone_name = DOMAIN
         dns_server = DNSHOST
@@ -99,7 +100,7 @@ class TaskAPI(Resource):
         args = self.parse.parse_args()
         domain_name = args['domain_name']
         domain_ip = args['domain_ip']
-        key_file = config.config_parser(conf_path)
+        key_file = config.getDnsKeyFile(conf_path)
         rcode = modify_zone_record(domain_name, domain_ip, key_file)
         if rcode == 0:
             result = 'true'
@@ -112,11 +113,13 @@ class TaskAPI(Resource):
     def delete(self):
         args = self.parse.parse_args()
         domain_name = args['domain_name']
-        key_file = config.config_parser(conf_path)
+        domain_ip = args['domain_ip']
+        key_file = config.getDnsKeyFile(conf_path)
         rcode = delete_zone_record(domain_name, key_file)
-        if rcode == 0:
+        ptrRcode = delete_zone_ptr_record(domain_name, domain_ip, key_file)
+        if (rcode == 0) and (ptrRcode == 0) :
             result = 'true'
-            return jsonify(domain_name = str(domain_name),result = result)
+            return jsonify(domain_name = str(domain_name), domain_ip = str(domain_ip), result = result)
         else:
             return "delete the dns_domain %s failed" % domain_name
 
@@ -258,6 +261,31 @@ def delete_zone_record(domain_name, key_file):
     response = send_dns_update(dns_update, dns_server, key_name)
     rcode = response.rcode()
     return rcode
+
+def delete_zone_ptr_record(domain_name, domain_ip, key_file):
+    """ del DNS zone record from dns server and return rcode.
+
+    Args:
+        String domain_name
+
+    Returns:
+        String rcode
+    """
+    dns_server = str(DNSHOST)
+    Origin = "idc.vip.com"
+    Origin, Name = parseName(Origin, domain_name)
+    ptrTarget = Name.to_text() + Origin.to_text()
+    ptr_addr = genPTR(domain_ip).to_text() 
+
+    ptrOrigin, ptrName = parseName(None, ptr_addr)
+    KeyRing = getKey(key_file)
+    ptrUpdate = dns.update.Update(ptrOrigin, keyring=KeyRing)
+    ptrUpdate.delete(ptrName, 'PTR', ptrTarget)
+    ptrResponse = dns.query.tcp(ptrUpdate, dns_server)
+    ptrRcode = ptrResponse.rcode()
+    return ptrRcode
+
+
 
 def modify_zone_record(domain_name, domain_ip, key_file):
     """modify DNS zone record from dns server and return rcode.
@@ -419,6 +447,44 @@ def getKey(FileName):
         print k, 'is not a valid key. The file should be in DNS KEY record format. See dnssec-keygen(8)'
         exit()
     return KeyRing
+
+
+def genPTR(domain_ip):
+    """get the ptr ip
+    """
+    try:
+        addr = dns.reversename.from_address(domain_ip)
+    except:
+        print 'Error:', domain_ip, 'is not a valid IP adresss'
+    return addr
+
+def parseName(Origin, Name):
+    """
+    ARGS:
+     Origin =  10.1.10.10.in-addr.arpa.
+     Name = genPTR(address).to_text() eq: 10.1.10.10.in-addr.arpa.
+    
+    RETURNS:
+     Origin = 1.10.10.in-addr.arpa.
+     Name = 10
+    """
+    try:
+        n = dns.name.from_text(Name)
+    except:
+        print 'Error:',  n, 'is not a valid name'
+        exit()
+    if Origin is None:
+        Origin = dns.resolver.zone_for_name(n)
+        Name = n.relativize(Origin)
+        return Origin, Name
+    else:
+        try:
+            Origin = dns.name.from_text(Origin)
+        except:
+            print 'Error:',  Name, 'is not a valid origin'
+            exit()
+        Name = n - Origin
+        return Origin, Name
 
 
 
