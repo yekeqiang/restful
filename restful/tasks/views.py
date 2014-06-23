@@ -401,7 +401,7 @@ def lookup_reserve_record(domain_ip):
 
 
 def getKey(FileName):
-    """get the keyRing to the key file
+    """get the keyRing from the key file
 
      ARGS:
          String: FileName
