@@ -50,6 +50,9 @@ class TaskListAPI(Resource):
         self.parse = reqparse.RequestParser()
         self.parse.add_argument('domain_name', type=str, required=True, help='No domain_name in dns', location='json')
         self.parse.add_argument('domain_ip', type=str, default="", location='json')
+        self.parse.add_argument('record_type', type=str, default="A", location='json')
+        self.parse.add_argument('ttl', type=str, default="3600", location='json')
+        self.parse.add_argument('create_reserve', type=bool, default=True, location='json')
 
     def get(self):
         return jsonify(tasks=[marshal(t, task_fields) for t in tasks])
@@ -59,15 +62,11 @@ class TaskListAPI(Resource):
         args = self.parse.parse_args()
         record_name = args['domain_name']
 	record_data = args['domain_ip']
-        #record_type = args['rcord_type']
-        record_type = "A"
-        #ttl = args['ttl']
-        ttl = 3600
-        #create_reserve = args['is_reserve']
-        create_reserve = True
-        #key_name = KEYRING
+	record_type = args['record_type']
+        ttl = args['ttl']
+        create_reserve = args['create_reserve']
+        #create_reserve = True
         key_file = config.getDnsKeyFile(conf_path)
-        print key_file
         zone_name = DOMAIN
         dns_server = DNSHOST
         rcode = create_forward_zone_record(dns_server, zone_name, record_name, record_type, record_data, ttl, key_file)
@@ -76,9 +75,10 @@ class TaskListAPI(Resource):
             record = create_reverse_zone_record(dns_server, record_data, record_name, zone_name, ttl, key_file)
 
         if rcode == 0:
-            result = 'true'
-            return jsonify(domain_name = str(record_name), domain_ip = str(record_data), domain = zone_name, dns_server = dns_server, result = result)
+            result = True
+            return jsonify(domain_name = str(record_name), domain_ip = str(record_data), record_type = record_type, ttl = ttl, result = result)
         else:
+            result = False
             return "add the dns_domain %s failed" % record_name       
 
 
