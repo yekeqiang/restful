@@ -65,16 +65,36 @@ class TaskListAPI(Resource):
 	record_type = args['record_type']
         ttl = args['ttl']
         create_reserve = args['create_reserve']
-        #create_reserve = True
         key_file = config.getDnsKeyFile(conf_path)
         zone_name = DOMAIN
         dns_server = DNSHOST
+        
+        if record_type == 'A':
+            isValidV4Addr(record_data)
+        elif record_type == 'AAAA':
+            isValidV6Addr(record_data) 
+        
+         
+        #before add a forward record, if there is a forward record in dns server? 
+        is_exist_forward = lookup_forward_record(record_name, record_type)
+        if is_exist_forward == 0:
+            print "it has already exist dns forward record  %s in dns server " %  record_name   
+            exit()
+        #before add reserve record, if there is a reserve record in dns server?
+        is_exist_reserve = lookup_reserve_record(record_data)
+        if is_exist_reserve == 0:
+            print "it has already exist dns reserve record %s in dns server " % record_data
+            exit()
+
         rcode = create_forward_zone_record(dns_server, zone_name, record_name, record_type, record_data, ttl, key_file)
-
-        if create_reserve: 
-            record = create_reverse_zone_record(dns_server, record_data, record_name, zone_name, ttl, key_file)
-
+        
         if rcode == 0:
+            if create_reserve: 
+                recode = create_reverse_zone_record(dns_server, record_data, record_name, zone_name, ttl, key_file)
+        else:
+            return "add the forward record %s:%s failed" % domain_name, domain_ip
+
+        if recode == 0:
             result = True
             return jsonify(domain_name = str(record_name), domain_ip = str(record_data), record_type = record_type, ttl = ttl, result = result)
         else:
@@ -116,7 +136,10 @@ class TaskAPI(Resource):
         domain_ip = args['domain_ip']
         key_file = config.getDnsKeyFile(conf_path)
         rcode = delete_zone_record(domain_name, key_file)
-        ptrRcode = delete_zone_ptr_record(domain_name, domain_ip, key_file)
+        if rcode == 0:
+            ptrRcode = delete_zone_ptr_record(domain_name, domain_ip, key_file)
+        else:
+            return "delte the forward record  %s failed" % domain_name 
         if (rcode == 0) and (ptrRcode == 0) :
             result = 'true'
             return jsonify(domain_name = str(domain_name), domain_ip = str(domain_ip), result = result)
@@ -390,15 +413,16 @@ def lookup_forward_record(domain_name, record_type):
     record_type = str(record_type)
     try:
         answers = dns.resolver.query(domain_name, record_type)
-        rrset = answers.rrset
-        qname = answers.qname
-        expiration = answers.expiration
-        canonical_name = answers.canonical_name
-        rdclass = answers.rdclass
-        rdtype = answers.rdtype
+        #rrset = answers.rrset
+        #qname = answers.qname
+        #expiration = answers.expiration
+        #canonical_name = answers.canonical_name
+        #rdclass = answers.rdclass
+        #rdtype = answers.rdtype
         response = answers.response
         rcode = response.rcode()
-        return rrset, qname, expiration, canonical_name, rdclass, rdtype, rcode
+        #return rrset, qname, expiration, canonical_name, rdclass, rdtype, rcode
+        return rcode
     except:
         print 'domain_name:', domain_name, 'is not valid'
 
@@ -416,17 +440,22 @@ def lookup_reserve_record(domain_ip):
         rcode - the response's rcode, success is 0
     """
     domain_ip = str(domain_ip)
-    rd_type = "PTR"
-    addr = reversename.from_address(domain_ip)
+    record_type = "PTR"
+    addr = dns.reversename.from_address(domain_ip)
     try:
         answers = dns.resolver.query(addr, record_type)
-        name = str(resolver.query(addr, rd_type)[0])
+        #name = str(resolver.query(addr, rd_type)[0])
         response = answers.response
         rcode = response.rcode()
-        return addr, name, rcode
+        #return addr, name, rcode
+        return rcode
     except:
-        print 'addr', addr, 'is not valid'
-
+        #print 'addr', addr, 'is not valid'
+        # 会抛出记录不存在的错误，但是这个是正常的，只有不存在才能添加
+        print "Unexpected error:", sys.exc_info()[0]
+        #raise
+        #print e
+           
 
 def getKey(FileName):
     """get the keyRing from the key file
